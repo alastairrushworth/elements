@@ -274,6 +274,38 @@ main { flex: 1; }
   font-variant-numeric: tabular-nums;
 }
 
+.natural-form {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+.natural-form:empty { display: none; }
+.nf-head {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.nf-text {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  margin: 6px auto 4px;
+  max-width: 30ch;
+}
+#molecule {
+  width: 100%;
+  max-width: 200px;
+  height: 168px;
+  margin: 2px auto 0;
+}
+.nf-formula {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent, #4cc9f0);
+}
+
 /* Right column */
 .modal-right { padding: 30px 28px; }
 .fun-fact {
