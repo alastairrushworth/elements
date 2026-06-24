@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Interactive Periodic Table</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <h1>The Interactive Periodic Table</h1>
+    </div>
+    <div id="legend" class="legend" aria-label="Filter by category"></div>
+  </header>
+
+  <main>
+    <div class="table-scroll">
+      <div id="table" class="periodic-table" role="grid" aria-label="Periodic table of the elements"></div>
+    </div>
+  </main>
+
+  <!-- Detail overlay -->
+  <div id="overlay" class="overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-name">
+      <button id="close-btn" class="close-btn" aria-label="Close">&times;</button>
+      <div class="modal-grid">
+        <!-- Left: identity + atom -->
+        <section class="modal-left">
+          <div class="id-card">
+            <div class="id-top">
+              <span class="id-number" id="m-number"></span>
+              <span class="id-mass" id="m-mass"></span>
+            </div>
+            <div class="id-symbol" id="m-symbol"></div>
+            <div class="id-name" id="m-name"></div>
+            <div class="id-cat" id="m-cat"></div>
+          </div>
+          <div class="atom-stage">
+            <svg id="atom" viewBox="-160 -160 320 320" aria-label="Animated atom model"></svg>
+            <div class="atom-caption" id="m-config"></div>
+          </div>
+        </section>
+
+        <!-- Right: facts + interactive -->
+        <section class="modal-right">
+          <p class="fun-fact" id="m-fact"></p>
+
+          <div class="props" id="m-props"></div>
+
+          <div class="meltdown" id="meltdown">
+            <div class="meltdown-head">
+              <h3>Melt it down <span class="hint">drag the temperature</span></h3>
+              <div class="state-badge" id="state-badge">
+                <span class="state-icon" id="state-icon"></span>
+                <span class="state-label" id="state-label"></span>
+              </div>
+            </div>
+            <div class="beaker" id="beaker">
+              <div class="particles" id="particles"></div>
+              <div class="phase-line melt-line" id="melt-line"><span></span></div>
+              <div class="phase-line boil-line" id="boil-line"><span></span></div>
+            </div>
+            <input type="range" id="temp-slider" min="0" max="6000" value="298" step="1" />
+            <div class="temp-readout">
+              <span id="temp-value">298 K</span>
+              <span class="temp-sub" id="temp-sub"></span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <span id="discovery-note"></span>
+    <span class="muted">Built as an interactive learning toy &middot; data for all 118 elements</span>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
