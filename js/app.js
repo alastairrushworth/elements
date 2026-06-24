@@ -406,6 +406,59 @@
     frame();
   }
 
+  /* ---------- Crystal structure → 2D lattice layout ---------- */
+  // Map the detailed structure key to a render motif.
+  function crystalInfo(el) {
+    const c = (typeof CRYSTALS !== "undefined" && CRYSTALS[el.sym]) || null;
+    const bucketOf = {
+      fcc: "closepack", hcp: "closepack", dhcp: "closepack",
+      bcc: "centered", diamond: "honeycomb", graphite: "honeycomb",
+      "simple-cubic": "square",
+    };
+    if (!c) return { bucket: "other", name: null };
+    return { bucket: bucketOf[c.lattice] || "other", name: c.name };
+  }
+
+  // Normalised (x,y in 0..1) target positions for a schematic of each motif.
+  function latticePoints(bucket) {
+    const L = 0.13, R = 0.87, B = 0.18, T = 0.84; // margins
+    const W = R - L, H = T - B;
+    const pts = [];
+    if (bucket === "centered") {
+      // body-centred: corner grid + atoms in each cell centre
+      const cols = 5, rows = 4;
+      for (let r = 0; r < rows; r++)
+        for (let c = 0; c < cols; c++) pts.push({ x: L + (c * W) / (cols - 1), y: B + (r * H) / (rows - 1) });
+      for (let r = 0; r < rows - 1; r++)
+        for (let c = 0; c < cols - 1; c++) pts.push({ x: L + ((c + 0.5) * W) / (cols - 1), y: B + ((r + 0.5) * H) / (rows - 1) });
+    } else if (bucket === "closepack") {
+      // close-packed plane: rows offset by half a spacing (fcc / hcp)
+      const rows = 5, sx = W / 6;
+      for (let r = 0; r < rows; r++) {
+        const odd = r % 2 === 1;
+        const cols = odd ? 6 : 7;
+        const off = odd ? sx / 2 : 0;
+        for (let c = 0; c < cols; c++) pts.push({ x: L + off + c * sx, y: B + (r * H) / (rows - 1) });
+      }
+    } else if (bucket === "honeycomb") {
+      // open tetrahedral/layered network (diamond, graphite)
+      const rows = 6, sx = W / 5;
+      for (let r = 0; r < rows; r++) {
+        const off = r % 2 ? sx / 2 : 0;
+        for (let c = 0; c < 6; c++) {
+          if ((c + (r % 2)) % 3 === 0) continue; // punch out holes → hex rings
+          pts.push({ x: L + off + c * sx, y: B + (r * H) / (rows - 1) });
+        }
+      }
+    } else {
+      // simple cubic / other: plain square grid
+      const cols = 6, rows = 5;
+      for (let r = 0; r < rows; r++)
+        for (let c = 0; c < cols; c++) pts.push({ x: L + (c * W) / (cols - 1), y: B + (r * H) / (rows - 1) });
+    }
+    return pts.filter((p) => p.x >= 0.04 && p.x <= 0.96 && p.y >= 0.04 && p.y <= 0.96);
+  }
+
   /* ---------- Meltdown widget ---------- */
   let beakerState = null;
 
@@ -420,17 +473,19 @@
     const hasData = el.melt != null && el.boil != null;
     wrap.classList.toggle("no-data", !hasData);
 
-    // build particles
+    // one particle per lattice site of this element's real crystal structure
+    const crystal = crystalInfo(el);
+    const sites = latticePoints(crystal.bucket);
     particlesEl.innerHTML = "";
-    const N = 26;
     const dots = [];
-    for (let i = 0; i < N; i++) {
+    for (let i = 0; i < sites.length; i++) {
       const p = document.createElement("div");
       p.className = "particle";
       p.style.background = color || "#4cc9f0";
       p.style.boxShadow = `0 0 8px ${color || "#4cc9f0"}`;
       particlesEl.appendChild(p);
-      dots.push({ el: p, x: Math.random(), y: Math.random(), vx: 0, vy: 0, hx: Math.random(), hy: Math.random() });
+      // start each particle on its lattice site (tx/ty are the solid target)
+      dots.push({ el: p, x: sites[i].x, y: sites[i].y, vx: 0, vy: 0, tx: sites[i].x, ty: sites[i].y });
     }
 
     // scale: 0..max where max comfortably above boil
@@ -455,7 +510,7 @@
     // stop any previous particle loop before starting a new one
     if (beakerState && beakerState.animLoop) cancelAnimationFrame(beakerState.animLoop);
 
-    beakerState = { el, dots, color: color || "#4cc9f0", hasData, maxT };
+    beakerState = { el, dots, color: color || "#4cc9f0", hasData, maxT, crystalName: crystal.name };
     updateMeltdown(start);
     animateParticles();
 
@@ -502,6 +557,17 @@
     const meta = stateMeta(state);
     document.getElementById("state-icon").textContent = meta.icon;
     document.getElementById("state-label").textContent = meta.label;
+
+    const cap = document.getElementById("lattice-caption");
+    if (state === "solid") {
+      cap.innerHTML = s.crystalName
+        ? `Atoms locked in a <b>${escapeHtml(s.crystalName)}</b> lattice`
+        : `Atoms locked in a fixed lattice`;
+    } else if (state === "liquid") {
+      cap.textContent = "Lattice broken — atoms slide past each other and flow";
+    } else {
+      cap.textContent = "Atoms break free and fly apart as a gas";
+    }
   }
 
   function stateMeta(state) {
@@ -523,18 +589,14 @@
       const state = s.state || "solid";
       const e = s.energy || 0; // 0..1 within the current phase
       const dots = s.dots;
-      const cols = 8;
 
-      dots.forEach((d, i) => {
+      dots.forEach((d) => {
         if (state === "solid") {
-          // fixed lattice; vibration grows from a faint shiver to a violent jiggle near melting
-          const col = i % cols;
-          const row = Math.floor(i / cols);
-          const baseX = 0.16 + col * (0.68 / (cols - 1));
-          const baseY = 0.12 + row * 0.19;
+          // hold each atom on its real lattice site; vibration grows from a faint
+          // shiver to a violent jiggle as the temperature nears the melting point
           const vib = 0.003 + e * 0.05;
-          d.x += (baseX - d.x) * 0.25 + (Math.random() - 0.5) * vib;
-          d.y += (baseY - d.y) * 0.25 + (Math.random() - 0.5) * vib;
+          d.x += (d.tx - d.x) * 0.25 + (Math.random() - 0.5) * vib;
+          d.y += (d.ty - d.y) * 0.25 + (Math.random() - 0.5) * vib;
         } else if (state === "liquid") {
           // pooled, flowing; sloshes harder as it approaches the boil
           const kick = 0.006 + e * 0.03;
