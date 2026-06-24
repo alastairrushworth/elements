@@ -288,6 +288,33 @@ main { flex: 1; }
 .fun-fact::before {
   content: "💡 ";
 }
+.extra-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.extra-facts:empty { display: none; }
+.xfact {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+}
+.xicon {
+  flex: 0 0 auto;
+  font-size: 1.05rem;
+  line-height: 1.4;
+  width: 22px;
+  text-align: center;
+}
+.xfact .xk {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.xfact .xv { font-size: 0.95rem; line-height: 1.4; }
+
 .props {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

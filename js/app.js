@@ -227,6 +227,7 @@
     document.getElementById("m-config").textContent =
       `${shells.length} shell${shells.length > 1 ? "s" : ""} · ${config}`;
 
+    buildExtra(el);
     buildProps(el);
     drawAtom(el, shells, color);
     setupMeltdown(el, color);
@@ -244,6 +245,29 @@
 
   function formatMass(m) {
     return m >= 100 ? m.toFixed(2) : m.toFixed(3);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  // Name origin / common uses / abundance, from js/details.js (keyed by symbol).
+  function buildExtra(el) {
+    const host = document.getElementById("m-extra");
+    const d = (typeof DETAILS !== "undefined" && DETAILS[el.sym]) || null;
+    if (!d) { host.innerHTML = ""; return; }
+    const rows = [
+      { icon: "🏷️", k: "Name origin", v: d.origin },
+      { icon: "🛠️", k: "Common uses", v: d.uses },
+      { icon: "🌍", k: "Abundance", v: d.abundance },
+    ].filter((r) => r.v);
+    host.innerHTML = rows
+      .map(
+        (r) =>
+          `<div class="xfact"><span class="xicon">${r.icon}</span>` +
+          `<div><div class="xk">${r.k}</div><div class="xv">${escapeHtml(r.v)}</div></div></div>`
+      )
+      .join("");
   }
 
   function buildProps(el) {
