@@ -23,10 +23,18 @@ atom model** and a hands-on **"melt it down" temperature lab**.
     solid, pool and flow when liquid, and fill the whole beaker as a gas — and
     the motion gets more energetic the hotter it gets, even within one phase.
     Dashed lines mark the real melting and boiling points.
+  - **Crystal lattice** in the meltdown beaker — the atoms sit in a 2D
+    schematic of the element's real solid structure (FCC/HCP/BCC, diamond,
+    simple-cubic…), labelled by name.
+  - **"Most often found on Earth as"** — the dominant natural form plus a 2D
+    ball-and-stick diagram of a representative species (O₂, the S₈ ring,
+    rock-salt NaCl, the SiO₄ tetrahedron, native-metal clusters, oxide
+    octahedra…).
   - Rich properties: full **electron configuration** (noble-gas shorthand),
     block, density, melting/boiling points, and a playful **"what would a
     250 ml glassful weigh?"** comparison against a glass of water.
-  - An engaging, fact-checked fun fact for every element.
+  - **Name origin, common uses, and abundance**, plus an engaging,
+    fact-checked fun fact for every element.
 - **Deep links** — open a specific element directly with a URL hash, e.g.
   `#Fe` or `#26`. Shareable and bookmarkable.
 - **Responsive** and keyboard-friendly (Esc to close a card).
@@ -46,8 +54,11 @@ python3 -m http.server 8000   # then visit http://localhost:8000
 ```
 index.html                    markup + layout
 css/style.css                 dark theme, table grid, modal, animations
-js/data.js                    the 118-element dataset (one object per element)
-js/app.js                     rendering, filter, atom animation, meltdown lab
+js/data.js                    core 118-element dataset (one object per element)
+js/details.js                 name origin, common uses, abundance
+js/crystals.js                solid-state crystal structure per element
+js/forms.js                   natural form + molecular-structure spec
+js/app.js                     rendering, atom + molecule + lattice, meltdown lab
 .github/workflows/deploy.yml  GitHub Pages deployment
 CNAME                         custom domain
 ```
