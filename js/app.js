@@ -230,6 +230,7 @@
     buildExtra(el);
     buildProps(el);
     drawAtom(el, shells, color);
+    buildNatural(el, color);
     setupMeltdown(el, color);
 
     document.getElementById("discovery-note").textContent =
@@ -404,6 +405,135 @@
       atomTimer = requestAnimationFrame(frame);
     }
     frame();
+  }
+
+  /* ---------- "Most often found as" molecule diagram ---------- */
+  // CPK-ish colours for common non-metals; metals fall back to the card accent.
+  const CPK = {
+    H: "#e8edf4", C: "#7a8290", N: "#5b8cff", O: "#ff5d5d", F: "#7be07b",
+    Cl: "#54d96b", Br: "#c1502e", I: "#9b5cff", S: "#ffd63b", P: "#ff9a3b",
+    B: "#ffb3a0", Si: "#d9a05b", Se: "#f0a050", Na: "#a77cff", K: "#8f59d6",
+    Ca: "#6fd0a0", Mg: "#56d68a",
+  };
+  const SUB = { "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉" };
+  const subFormula = (f) => String(f).replace(/\d/g, (d) => SUB[d]);
+  const rad = (deg) => (deg * Math.PI) / 180;
+  function cpk(sym, accent) { return CPK[sym] || accent || "#9aa6c0"; }
+  function isLight(hex) {
+    const m = String(hex).replace("#", "");
+    if (m.length !== 6) return false;
+    const r = parseInt(m.slice(0, 2), 16), g = parseInt(m.slice(2, 4), 16), b = parseInt(m.slice(4, 6), 16);
+    return 0.299 * r + 0.587 * g + 0.114 * b > 150;
+  }
+
+  function buildNatural(el, accent) {
+    const host = document.getElementById("m-natural");
+    const f = (typeof FORMS !== "undefined" && FORMS[el.sym]) || null;
+    if (!f) { host.style.display = "none"; return; }
+    host.style.display = "";
+    document.getElementById("nf-text").textContent = f.occursAs || "";
+    document.getElementById("nf-formula").textContent = subFormula(f.formula || "");
+    drawMolecule(f, accent);
+  }
+
+  function drawMolecule(spec, accent) {
+    const svg = document.getElementById("molecule");
+    svg.innerHTML = "";
+    const { shape, center, ligand, bond } = spec;
+    const atoms = []; // {x, y, el}
+    const bonds = []; // {a, b, order}
+    const add = (x, y, e) => (atoms.push({ x, y, el: e }), atoms.length - 1);
+    const ring = (n, r, deg0, e) => {
+      const idx = [];
+      for (let k = 0; k < n; k++) { const a = rad(deg0 + (k * 360) / n); idx.push(add(Math.cos(a) * r, Math.sin(a) * r, e)); }
+      return idx;
+    };
+
+    if (shape === "monatomic") {
+      add(0, 0, center);
+    } else if (shape === "diatomic") {
+      const a = add(-32, 0, center), b = add(32, 0, ligand);
+      bonds.push({ a, b, order: bond || 1 });
+    } else if (shape === "linear3") {
+      const c = add(0, 0, center);
+      [-52, 52].forEach((x) => bonds.push({ a: c, b: add(x, 0, ligand), order: bond || 2 }));
+    } else if (shape === "bent3") {
+      const c = add(0, -20, center);
+      [[-44, 22], [44, 22]].forEach(([x, y]) => bonds.push({ a: c, b: add(x, y, ligand), order: bond || 1 }));
+    } else if (shape === "trigonal") {
+      const c = add(0, 0, center);
+      ring(3, 54, -90, ligand).forEach((i) => bonds.push({ a: c, b: i, order: bond || 1 }));
+    } else if (shape === "tetrahedral") {
+      const c = add(0, 0, center);
+      ring(4, 54, 45, ligand).forEach((i) => bonds.push({ a: c, b: i, order: bond || 1 }));
+    } else if (shape === "octahedral") {
+      const c = add(0, 0, center);
+      ring(6, 56, -90, ligand).forEach((i) => bonds.push({ a: c, b: i, order: bond || 1 }));
+    } else if (shape === "ring8") {
+      const idx = ring(8, 56, -90, center);
+      for (let k = 0; k < 8; k++) bonds.push({ a: idx[k], b: idx[(k + 1) % 8], order: 1 });
+    } else if (shape === "rocksalt") {
+      const sp = 42, grid = {};
+      for (let r = -1; r <= 1; r++)
+        for (let c = -1; c <= 1; c++) grid[r + "," + c] = add(c * sp, r * sp, ((r + c) & 1) === 0 ? center : ligand);
+      for (let r = -1; r <= 1; r++)
+        for (let c = -1; c <= 1; c++) {
+          if (c < 1) bonds.push({ a: grid[r + "," + c], b: grid[r + "," + (c + 1)], order: 0 });
+          if (r < 1) bonds.push({ a: grid[r + "," + c], b: grid[r + 1 + "," + c], order: 0 });
+        }
+    } else if (shape === "lattice") {
+      const c = add(0, 0, center);
+      const outer = ring(6, 46, -90, center);
+      outer.forEach((i, k) => { bonds.push({ a: c, b: i, order: 0 }); bonds.push({ a: i, b: outer[(k + 1) % 6], order: 0 }); });
+    } else {
+      // cluster — generic centre + 4 partners
+      const c = add(0, 0, center);
+      ring(4, 52, 60, ligand || center).forEach((i) => bonds.push({ a: c, b: i, order: bond || 1 }));
+    }
+
+    const r = atoms.length <= 1 ? 26 : atoms.length === 2 ? 19 : atoms.length <= 4 ? 16 : 14;
+    bonds.forEach((b) => drawBond(svg, atoms[b.a], atoms[b.b], b.order));
+    atoms.forEach((a) => drawAtomNode(svg, a, accent, r));
+  }
+
+  function drawBond(svg, p1, p2, order) {
+    if (!p1 || !p2) return;
+    const NS = "http://www.w3.org/2000/svg";
+    const dx = p2.x - p1.x, dy = p2.y - p1.y, len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len, ny = dx / len;
+    const n = order >= 1 ? order : 1;
+    const g = 4.5;
+    const offsets = n === 1 ? [0] : n === 2 ? [-g, g] : [-g * 1.5, 0, g * 1.5];
+    offsets.forEach((o) => {
+      const line = document.createElementNS(NS, "line");
+      line.setAttribute("x1", (p1.x + nx * o).toFixed(2));
+      line.setAttribute("y1", (p1.y + ny * o).toFixed(2));
+      line.setAttribute("x2", (p2.x + nx * o).toFixed(2));
+      line.setAttribute("y2", (p2.y + ny * o).toFixed(2));
+      line.setAttribute("stroke", order === 0 ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.5)");
+      line.setAttribute("stroke-width", order === 0 ? "1.4" : "3");
+      if (order === 0) line.setAttribute("stroke-dasharray", "3 4");
+      line.setAttribute("stroke-linecap", "round");
+      svg.appendChild(line);
+    });
+  }
+
+  function drawAtomNode(svg, a, accent, r) {
+    const NS = "http://www.w3.org/2000/svg";
+    const color = cpk(a.el, accent);
+    const c = document.createElementNS(NS, "circle");
+    c.setAttribute("cx", a.x); c.setAttribute("cy", a.y); c.setAttribute("r", r);
+    c.setAttribute("fill", color);
+    c.setAttribute("stroke", "rgba(0,0,0,0.4)"); c.setAttribute("stroke-width", "1");
+    c.style.filter = "drop-shadow(0 1px 2px rgba(0,0,0,0.5))";
+    svg.appendChild(c);
+    const t = document.createElementNS(NS, "text");
+    t.setAttribute("x", a.x); t.setAttribute("y", a.y);
+    t.setAttribute("text-anchor", "middle"); t.setAttribute("dominant-baseline", "central");
+    t.setAttribute("font-size", r >= 19 ? "13" : "10.5"); t.setAttribute("font-weight", "700");
+    t.setAttribute("fill", isLight(color) ? "#0b0f1a" : "#ffffff");
+    t.textContent = a.el;
+    svg.appendChild(t);
   }
 
   /* ---------- Crystal structure → 2D lattice layout ---------- */
