@@ -419,11 +419,15 @@
   const subFormula = (f) => String(f).replace(/\d/g, (d) => SUB[d]);
   const rad = (deg) => (deg * Math.PI) / 180;
   function cpk(sym, accent) { return CPK[sym] || accent || "#9aa6c0"; }
+  function hx(hex) { const m = String(hex).replace("#", ""); return [0, 2, 4].map((i) => parseInt(m.slice(i, i + 2), 16)); }
   function isLight(hex) {
-    const m = String(hex).replace("#", "");
-    if (m.length !== 6) return false;
-    const r = parseInt(m.slice(0, 2), 16), g = parseInt(m.slice(2, 4), 16), b = parseInt(m.slice(4, 6), 16);
+    const [r, g, b] = hx(hex);
     return 0.299 * r + 0.587 * g + 0.114 * b > 150;
+  }
+  // blend a hex colour toward target (#fff / #000) by amt 0..1
+  function mix(hex, target, amt) {
+    const a = hx(hex), b = hx(target);
+    return "#" + a.map((v, i) => Math.round(v + (b[i] - v) * amt).toString(16).padStart(2, "0")).join("");
   }
 
   function buildNatural(el, accent) {
@@ -492,8 +496,38 @@
     }
 
     const r = atoms.length <= 1 ? 26 : atoms.length === 2 ? 19 : atoms.length <= 4 ? 16 : 14;
+    const NS = "http://www.w3.org/2000/svg";
+
+    // soft accent glow behind the molecule, matching the card's theme
+    const glow = document.createElementNS(NS, "circle");
+    glow.setAttribute("cx", 0); glow.setAttribute("cy", 0); glow.setAttribute("r", 60);
+    glow.setAttribute("fill", accent || "#4cc9f0");
+    glow.setAttribute("opacity", "0.12");
+    glow.style.filter = "blur(22px)";
+    svg.appendChild(glow);
+
+    // one glossy-sphere radial gradient per distinct atom colour
+    const defs = document.createElementNS(NS, "defs");
+    const gradId = {};
+    atoms.forEach((a) => {
+      const col = cpk(a.el, accent);
+      if (gradId[col]) return;
+      const id = "mgrad" + Object.keys(gradId).length;
+      gradId[col] = id;
+      const g = document.createElementNS(NS, "radialGradient");
+      g.setAttribute("id", id);
+      g.setAttribute("cx", "35%"); g.setAttribute("cy", "30%"); g.setAttribute("r", "75%");
+      [[0, mix(col, "#ffffff", 0.6)], [55, col], [100, mix(col, "#000000", 0.4)]].forEach(([off, c]) => {
+        const s = document.createElementNS(NS, "stop");
+        s.setAttribute("offset", off + "%"); s.setAttribute("stop-color", c);
+        g.appendChild(s);
+      });
+      defs.appendChild(g);
+    });
+    svg.appendChild(defs);
+
     bonds.forEach((b) => drawBond(svg, atoms[b.a], atoms[b.b], b.order));
-    atoms.forEach((a) => drawAtomNode(svg, a, accent, r));
+    atoms.forEach((a, i) => drawAtomNode(svg, a, accent, r, gradId[cpk(a.el, accent)], i));
   }
 
   function drawBond(svg, p1, p2, order) {
@@ -501,8 +535,9 @@
     const NS = "http://www.w3.org/2000/svg";
     const dx = p2.x - p1.x, dy = p2.y - p1.y, len = Math.hypot(dx, dy) || 1;
     const nx = -dy / len, ny = dx / len;
-    const n = order >= 1 ? order : 1;
-    const g = 4.5;
+    const ionic = order === 0;
+    const n = ionic ? 1 : order;
+    const g = 4.6;
     const offsets = n === 1 ? [0] : n === 2 ? [-g, g] : [-g * 1.5, 0, g * 1.5];
     offsets.forEach((o) => {
       const line = document.createElementNS(NS, "line");
@@ -510,30 +545,45 @@
       line.setAttribute("y1", (p1.y + ny * o).toFixed(2));
       line.setAttribute("x2", (p2.x + nx * o).toFixed(2));
       line.setAttribute("y2", (p2.y + ny * o).toFixed(2));
-      line.setAttribute("stroke", order === 0 ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.5)");
-      line.setAttribute("stroke-width", order === 0 ? "1.4" : "3");
-      if (order === 0) line.setAttribute("stroke-dasharray", "3 4");
+      line.setAttribute("stroke", ionic ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.7)");
+      line.setAttribute("stroke-width", ionic ? "1.6" : "3.2");
       line.setAttribute("stroke-linecap", "round");
+      line.setAttribute("class", "molbond");
+      if (ionic) line.setAttribute("stroke-dasharray", "2 5");
+      else line.style.filter = "drop-shadow(0 0 2.5px rgba(255,255,255,0.5))";
       svg.appendChild(line);
     });
   }
 
-  function drawAtomNode(svg, a, accent, r) {
+  function drawAtomNode(svg, a, accent, r, gradRef, idx) {
     const NS = "http://www.w3.org/2000/svg";
-    const color = cpk(a.el, accent);
+    const base = cpk(a.el, accent);
+    const grp = document.createElementNS(NS, "g");
+    grp.setAttribute("class", "molatom");
+    grp.style.animationDelay = (idx * 0.045).toFixed(2) + "s";
+
     const c = document.createElementNS(NS, "circle");
     c.setAttribute("cx", a.x); c.setAttribute("cy", a.y); c.setAttribute("r", r);
-    c.setAttribute("fill", color);
-    c.setAttribute("stroke", "rgba(0,0,0,0.4)"); c.setAttribute("stroke-width", "1");
-    c.style.filter = "drop-shadow(0 1px 2px rgba(0,0,0,0.5))";
-    svg.appendChild(c);
+    c.setAttribute("fill", gradRef ? `url(#${gradRef})` : base);
+    c.style.filter = `drop-shadow(0 0 7px ${base}99) drop-shadow(0 1px 2px rgba(0,0,0,0.55))`;
+    grp.appendChild(c);
+
+    // specular highlight for a glassy sphere look
+    const hl = document.createElementNS(NS, "ellipse");
+    hl.setAttribute("cx", (a.x - r * 0.3).toFixed(2)); hl.setAttribute("cy", (a.y - r * 0.36).toFixed(2));
+    hl.setAttribute("rx", (r * 0.4).toFixed(2)); hl.setAttribute("ry", (r * 0.28).toFixed(2));
+    hl.setAttribute("fill", "#ffffff"); hl.setAttribute("opacity", "0.4");
+    grp.appendChild(hl);
+
     const t = document.createElementNS(NS, "text");
     t.setAttribute("x", a.x); t.setAttribute("y", a.y);
     t.setAttribute("text-anchor", "middle"); t.setAttribute("dominant-baseline", "central");
     t.setAttribute("font-size", r >= 19 ? "13" : "10.5"); t.setAttribute("font-weight", "700");
-    t.setAttribute("fill", isLight(color) ? "#0b0f1a" : "#ffffff");
+    t.setAttribute("fill", isLight(base) ? "#0b0f1a" : "#ffffff");
     t.textContent = a.el;
-    svg.appendChild(t);
+    grp.appendChild(t);
+
+    svg.appendChild(grp);
   }
 
   /* ---------- Crystal structure → 2D lattice layout ---------- */
