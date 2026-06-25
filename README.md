@@ -4,7 +4,7 @@ An informational, interactive periodic table of all 118 elements. Click any
 element to explore it in an engaging detail view — complete with an **animated
 atom model** and a hands-on **"melt it down" temperature lab**.
 
-**Live site → https://elements.alastairrushworth.com/**
+**Live site → https://alastairrushworth.com/elements/**
 
 ![Periodic table](https://img.shields.io/badge/elements-118-blueviolet) ![No build step](https://img.shields.io/badge/build-none-success)
 
@@ -81,7 +81,7 @@ browser history.
 
 Pushes to `main` are deployed to **GitHub Pages** by the Actions workflow in
 `.github/workflows/deploy.yml`, served at the custom domain in `CNAME`
-(https://elements.alastairrushworth.com/). It's a plain static site, so the
+(https://alastairrushworth.com/elements/). It's a plain static site, so the
 workflow just uploads the repo root as the Pages artifact — no build step.
 
 ## Notes on the data
