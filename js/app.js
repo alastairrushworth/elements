@@ -242,7 +242,10 @@
     document.body.style.overflow = "hidden";
     document.getElementById("close-btn").focus();
     history.replaceState(null, "", "#" + el.sym);
+    document.title = `${el.name} (${el.sym}) — The Interactive Periodic Table`;
   }
+
+  const BASE_TITLE = "The Interactive Periodic Table — Explore All 118 Elements";
 
   function formatMass(m) {
     return m >= 100 ? m.toFixed(2) : m.toFixed(3);
@@ -817,6 +820,7 @@
     if (beakerState && beakerState.animLoop) cancelAnimationFrame(beakerState.animLoop);
     beakerState = null;
     history.replaceState(null, "", location.pathname + location.search);
+    document.title = BASE_TITLE;
   }
 
   /* ---------- Deep-linking (#Fe or #26) ---------- */
