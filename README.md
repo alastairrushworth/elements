@@ -59,9 +59,23 @@ js/details.js                 name origin, common uses, abundance
 js/crystals.js                solid-state crystal structure per element
 js/forms.js                   natural form + molecular-structure spec
 js/app.js                     rendering, atom + molecule + lattice, meltdown lab
+manifest.webmanifest          PWA manifest (installable, theme colour)
+robots.txt                    crawler rules + sitemap pointer
+sitemap.xml                   sitemap for search engines
+favicon.svg / *.png           favicons, apple-touch & PWA icons
+og-image.png                  1200×630 social share preview image
 .github/workflows/deploy.yml  GitHub Pages deployment
 CNAME                         custom domain
 ```
+
+## SEO & discoverability
+
+`index.html` carries a full metadata head: a descriptive `<title>` and meta
+description, canonical URL, Open Graph + Twitter Card tags (with a 1200×630
+`og-image.png` preview), favicons/PWA icons, a web app manifest, and
+`WebApplication` JSON-LD structured data. `robots.txt` and `sitemap.xml` round
+it out. Opening an element also updates `document.title` for tidy, shareable
+browser history.
 
 ## Deployment
 
